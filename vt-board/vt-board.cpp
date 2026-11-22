@@ -12,6 +12,10 @@
 HINSTANCE hInst;  // 現在のインターフェイス
 WCHAR szTitle[MAX_LOADSTRING];  // タイトルバーのテキスト
 WCHAR szWindowClass[MAX_LOADSTRING];  // メインウィンドウクラス名
+// ウィンドウのリサイズ
+BOOL scheduleResize;
+UINT scheduleResizeWidth;
+UINT scheduleResizeHeight;
 
 // このコードモジュールに含まれる関数の宣言を転送します:
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -25,8 +29,6 @@ int APIENTRY wWinMain(
 {
   UNREFERENCED_PARAMETER(hPrevInstance);
   UNREFERENCED_PARAMETER(lpCmdLine);
-
-  App app{};
 
   // グローバル文字列を初期化する
   LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -42,7 +44,7 @@ int APIENTRY wWinMain(
   wcex.hInstance = hInstance;
   wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_VTBOARD));
   wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
-  wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+  wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
   wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_VTBOARD);
   wcex.lpszClassName = szWindowClass;
   wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
@@ -58,12 +60,14 @@ int APIENTRY wWinMain(
   AdjustWindowRect(&windowRect, WS_OVERLAPPEDWINDOW, FALSE);
   LONG width = windowRect.right - windowRect.left;
   LONG height = windowRect.bottom - windowRect.top;
-  HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, width, height, nullptr, nullptr, hInstance, &app);
+  HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, width, height, nullptr, nullptr, hInstance, nullptr);
   if (!hWnd)
   {
     return FALSE;
   }
   ShowWindow(hWnd, nCmdShow);
+
+  App app{};
   app.OnInit(hWnd, static_cast<UINT>(width), static_cast<UINT>(height));
 
   HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_VTBOARD));
@@ -81,6 +85,17 @@ int APIENTRY wWinMain(
         DispatchMessage(&msg);
       }
     }
+    else
+    {
+      if (scheduleResize)
+      {
+        app.OnResize(scheduleResizeWidth, scheduleResizeHeight);
+        scheduleResize = FALSE;
+      }
+
+      app.OnUpdate();
+      app.OnRender();
+    }
   }
 
   app.OnDestroy();
@@ -91,22 +106,11 @@ int APIENTRY wWinMain(
 //  関数: WndProc(HWND, UINT, WPARAM, LPARAM)
 //  目的: メインウィンドウのメッセージを処理します。
 //  WM_COMMAND  - アプリケーションメニューの処理
-//  WM_PAINT    - メインウィンドウを描画する
 //  WM_DESTROY  - 中止メッセージを表示して戻る
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-  App* app = reinterpret_cast<App*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
-
   switch (message)
   {
-    case WM_CREATE:
-    {
-      // Save the app* passed in to CreateWindow.
-      LPCREATESTRUCT pCreateStruct = reinterpret_cast<LPCREATESTRUCT>(lParam);
-      SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pCreateStruct->lpCreateParams));
-      break;
-    }
-
     case WM_COMMAND:
     {
       int wmId = LOWORD(wParam);
@@ -134,12 +138,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       break;
     }
 
-    case WM_PAINT:
+    case WM_SIZE:
     {
-      if (app)
-      {
-        app->OnRender();
-      }
+      scheduleResizeWidth = LOWORD(lParam);
+      scheduleResizeHeight = HIWORD(lParam);
+      scheduleResize = TRUE;
       break;
     }
 

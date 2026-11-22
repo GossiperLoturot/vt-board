@@ -19,6 +19,46 @@ void App::OnInit(HWND hWnd, UINT width, UINT height) {
   LoadAssets();
 }
 
+void App::OnResize(UINT width, UINT height)
+{
+  if (width == 0 || height == 0)
+  {
+    return;
+  }
+
+  m_width = width;
+  m_height = height;
+  m_aspectRatio = static_cast<float>(width) / static_cast<float>(height);
+
+  WaitForPreviousFrame();
+
+  for (UINT n = 0; n < FrameCount; n++)
+  {
+    m_renderTargets[n].Reset();
+  }
+
+  DXGI_SWAP_CHAIN_DESC desc = {};
+  ThrowIfFailed(m_swapChain->GetDesc(&desc));
+  ThrowIfFailed(m_swapChain->ResizeBuffers(
+      FrameCount,
+      m_width,
+      m_height,
+      desc.BufferDesc.Format,
+      desc.Flags
+  ));
+
+  m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
+
+  CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart());
+  // Create a RTV for each frame.
+  for (UINT n = 0; n < FrameCount; n++)
+  {
+    ThrowIfFailed(m_swapChain->GetBuffer(n, IID_PPV_ARGS(&m_renderTargets[n])));
+    m_device->CreateRenderTargetView(m_renderTargets[n].Get(), nullptr, rtvHandle);
+    rtvHandle.Offset(1, m_rtvDescriptorSize);
+  }
+}
+
 void App::OnUpdate() {}
 
 void App::OnRender() {
@@ -197,7 +237,7 @@ void App::PopulateCommandList()
   CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIndex, m_rtvDescriptorSize);
 
   // Record commands.
-  const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
+  const float clearColor[] = { 0.9f, 1.0f, 1.0f, 1.0f };
   m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 
   // Indicate that the back buffer will now be used to present.
@@ -226,8 +266,8 @@ void App::WaitForPreviousFrame()
   // Wait until the previous frame is finished.
   if (m_fence->GetCompletedValue() < fence)
   {
-      ThrowIfFailed(m_fence->SetEventOnCompletion(fence, m_fenceEvent));
-      WaitForSingleObject(m_fenceEvent, INFINITE);
+    ThrowIfFailed(m_fence->SetEventOnCompletion(fence, m_fenceEvent));
+    WaitForSingleObject(m_fenceEvent, INFINITE);
   }
 
   m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();

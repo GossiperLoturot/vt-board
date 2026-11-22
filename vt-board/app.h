@@ -11,6 +11,7 @@ public:
   ~App();
 
   void OnInit(HWND hWnd, UINT m_width, UINT m_height);
+  void OnResize(UINT m_width, UINT m_height);
   void OnUpdate();
   void OnRender();
   void OnDestroy();
