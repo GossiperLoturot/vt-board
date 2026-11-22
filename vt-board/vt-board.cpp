@@ -56,7 +56,7 @@ int APIENTRY wWinMain(
   //   この関数で、グローバル変数でインスタンスハンドルを保存し、
   //   メインプログラムウィンドウを作成および表示します。
   hInst = hInstance;  // グローバル変数にインスタンスハンドルを格納する
-  RECT windowRect{ 0, 0, static_cast<LONG>(WIDTH), static_cast<LONG>(HEIGHT) };
+  RECT windowRect = { 0, 0, static_cast<LONG>(WIDTH), static_cast<LONG>(HEIGHT) };
   AdjustWindowRect(&windowRect, WS_OVERLAPPEDWINDOW, FALSE);
   LONG width = windowRect.right - windowRect.left;
   LONG height = windowRect.bottom - windowRect.top;
@@ -67,7 +67,7 @@ int APIENTRY wWinMain(
   }
   ShowWindow(hWnd, nCmdShow);
 
-  App app{};
+  App app = {};
   app.OnInit(hWnd, static_cast<UINT>(width), static_cast<UINT>(height));
 
   HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_VTBOARD));
